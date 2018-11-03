@@ -81,6 +81,9 @@ class Merge:
     # def getKeyPoint(self):
     #     return self._getKeyPoint(self.img1,self.img2)
 
+    # def GetGeometry(self)
+
+
     def Merge(self,RotateImage,NotRotateImage,point,Spe_point,choose = 0):
         rows_2,cols_2 = NotRotateImage.shape#NotRotateImage是未旋转的图像
         NotRotateImagePoint = [(0,0),(cols_2-1,0),(0,rows_2-1),(cols_2-1,rows_2-1)]
@@ -132,11 +135,13 @@ class Merge:
             if Spe_point[0] == maxX:
                 Len = Temp_img1.shape[1] - abs(Spe_point[2])
                 alpha = np.dot(np.ones((shape_Rows,1)),np.linspace(0,Len-1,Len).reshape(1,Len))/(Len-1)
-                matrix = (Temp_img1[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] == 0)
+                matrix = (Temp_img1[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] == 0) 
                 beta = alpha * matrix
                 beta = beta + (1-matrix)
                 beta = (beta == 0) + beta
                 alpha = alpha / beta
+                matrix = (Temp_img2[:,0:Len] == 0)
+                alpha = alpha * (1 - matrix)
                 new_Img[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] = (1 - alpha) * Temp_img1[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] + (alpha) * Temp_img2[:,0:Len]
                 new_Img[:,abs(Spe_point[2])+Len:] = Temp_img2[:,Len:]
                 return new_Img
@@ -148,6 +153,8 @@ class Merge:
                 beta = beta + (1-matrix)
                 beta = (beta == 0) + beta
                 alpha = alpha / beta
+                matrix = (Temp_img2[:,0:Len] == 0)
+                alpha = alpha * (1 - matrix)
                 new_Img[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] = (1 - alpha) * Temp_img1[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] + (alpha) * Temp_img2[:,0:Len]
                 new_Img[:,abs(Spe_point[2])+Len:] = Temp_img1[:,abs(Spe_point[2])+Len:]
                 return new_Img
@@ -156,11 +163,13 @@ class Merge:
             if Spe_point[0] != maxX:    
                 Len = Temp_img2.shape[1] - abs(Spe_point[2])
                 alpha = np.dot(np.ones((shape_Rows,1)),np.linspace(0,Len-1,Len).reshape(1,Len))/(Len-1)
-                matrix = (Temp_img2[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] == 0)
+                matrix = (Temp_img2[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] == 0) 
                 beta = alpha * matrix
                 beta = beta + (1-matrix)
                 beta = (beta == 0) + beta
                 alpha = alpha / beta
+                matrix = (Temp_img1[:,0:Len] == 0)
+                alpha = alpha * (1 - matrix)
                 new_Img[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] = (1 - alpha) * Temp_img2[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] + (alpha) * Temp_img1[:,0:Len]
                 new_Img[:,abs(Spe_point[2])+Len:] = Temp_img1[:,Len:]
                 return new_Img
@@ -172,6 +181,8 @@ class Merge:
                 beta = beta + (1-matrix)
                 beta = (beta == 0) + beta
                 alpha = alpha / beta
+                matrix = (Temp_img1[:,0:Len] == 0)
+                alpha = alpha*(1-matrix)
                 new_Img[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] = (1 - alpha) * Temp_img2[:,abs(Spe_point[2]):abs(Spe_point[2])+Len] + (alpha) * Temp_img1[:,0:Len]
                 new_Img[:,abs(Spe_point[2])+Len:] = Temp_img2[:,abs(Spe_point[2])+Len:]
                 return new_Img 
@@ -208,7 +219,7 @@ class Merge:
         ptsB = [Kp2[i].pt for (i, _) in MatchRes]
         return ptsA,ptsB
 
-    def _StitchImage(self,img1,img2):#img2 rotate to img1
+    def _StitchImage(self,img1,img2):#img2 rotate to img1 :like imglist[7]
         gray_img1 = cv2.cvtColor(img1,cv2.COLOR_BGR2GRAY)
         gray_img2 = cv2.cvtColor(img2,cv2.COLOR_BGR2GRAY)
         Bimg1,Gimg1,Rimg1 = cv2.split(img1)
@@ -241,9 +252,10 @@ if __name__ == "__main__":
     for i in range(9):
         PATH_list.append("../img/"+str(i+1)+".jpg")
     Merge1 = Merge(PATH_list)
-    newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[7]) 
-    newImg = Merge1._StitchImage(newImg,Merge1.imglist[6]) 
-    newImg = Merge1._StitchImage(newImg,Merge1.imglist[1]) 
-    newImg = Merge1._StitchImage(newImg,Merge1.imglist[2]) 
+    cv2.imshow('s',Merge1.imglist[6])
+    newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[6]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[7]) 
+    # newImg = Merge1._StitchImage(newImg,Merge1.imglist[1]) 
+    # newImg = Merge1._StitchImage(newImg,Merge1.imglist[2]) 
     cv2.imshow("res",newImg)
     cv2.waitKey(0)
