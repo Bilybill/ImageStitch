@@ -239,7 +239,7 @@ class Merge:
 if __name__ == "__main__":
     PATH_list = []
     for i in range(9):
-        PATH_list.append("../img/"+str(i+1)+".jpg")
+        PATH_list.append("../img/"+str(i+1)+".JPG")
     Merge1 = Merge(PATH_list)
     newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[7]) 
     newImg = Merge1._StitchImage(newImg,Merge1.imglist[6]) 
