@@ -432,32 +432,56 @@ class Merge:
         minIndex = Intensity.index(min(Intensity))
         minRoute = np.array(Route[minIndex]) + start
         #print(minRoute)
-        DiffGraph = np.zeros((shape_Rows,shape_Cols))
+        DiffGraph = np.zeros((shape_Rows,shape_Cols),dtype=np.uint8)
         for i in range(shape_Rows):
             DiffGraph[i,0:minRoute[i]] = 255
-        #先假设未旋转图片在左边
+        
+        # if Spe_point[2] == minX:
+        
+        newMatrix1 = (mask1|mask2)*(DiffGraph == 0)*(1-mask2)
+        DiffGraph = DiffGraph + newMatrix1.astype(np.uint8)*255
+        newMatrix2 = (mask1|mask2)*(1 - (DiffGraph==0))*(1-mask1)
+        DiffGraph = (DiffGraph * (1 - newMatrix2)).astype(np.uint8)
+        r = np.int(np.ceil(np.log2(shape_Rows)))
+        s = np.int(np.ceil(np.log2(shape_Cols)))
+        New_rows = np.power(2,r)#将行数和列数都换算为2的幂次
+        New_cols = np.power(2,s)
+        addRow = 0
+        addCol = 0
+        Temp_img1 = cv2.resize(Temp_img1,(New_cols,New_rows))
+        Temp_img2 = cv2.resize(Temp_img2,(New_cols,New_rows))
+        DiffGraph = cv2.resize(DiffGraph,(New_cols,New_rows))
+        
+        # if DiffGraph.any() != 0 and DiffGraph.any() != 255:
+        #     raise ValueError("should not occur")
+        # cv2.imshow("s",DiffGraph)
+        # cv2.waitKey(0)
+        #maskDiff = (DiffGraph != 255) and (DiffGraph != 0)
+
+
         La = pyr.laplian_image(Temp_img1)
         Lb = pyr.laplian_image(Temp_img2)
         GR = pyr.pyramid_img(DiffGraph)
         N = len(La)
         S = []
         for i in range(N):
-            if i == 0:
-                temp = (DiffGraph/255)*La[N-1-i] + ((255 - DiffGraph)/255)*Lb[N-1-i]
+            if i != N-1:   
+                temp = ((GR[N-2-i]/255)*La[i] + ((255 - GR[N-2-i])/255)*Lb[i]).astype(np.uint8)
                 S.append(temp)
             else:
-                temp = (GR[i-1]/255)*La[N-1-i] + ((255 - GR[i-1])/255)*Lb[N-1-i]
+                temp = ((DiffGraph/255)*La[i] + ((255 - DiffGraph)/255)*Lb[i]).astype(np.uint8)
                 S.append(temp)
         newImg = None
-        for i in range(len(S)-1,-1,-1):
-            if i == len(S) - 1:
-                tmp = cv2.pyrUp(S[i],dstsize = S[i-1].shape[:2])
-                newImg = tmp + S[i-1]
-            elif i != 0:
-                newImg = cv2.pyrUp(newImg,dstsize = S[i-1].shape[:2]) + S[i-1]
+        for i in range(len(S)-1):
+            if i == 0:
+                expand = cv2.pyrUp(S[i], dstsize = S[i+1].shape[:2])
+                newImg = expand + S[i+1]
             else:
-                continue
-        return newImg   
+                expand = cv2.pyrUp(newImg,dstsize = S[i+1].shape[:2])
+                newImg = expand + S[i+1]
+        newImg = newImg.astype(np.uint8)
+        newImg = cv2.resize(newImg,(shape_Cols,shape_Rows))
+        return newImg    
 
     def _GetImgHist(self, img):
         rows, cols = img.shape
@@ -523,7 +547,13 @@ if __name__ == "__main__":
     for i in range(9):
         PATH_list.append("../img/"+str(i+1)+".JPG")
     Merge1 = Merge(PATH_list)
-    newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[6]) 
+    newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[1]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[2]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[6]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[8])
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[3])
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[4])
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[5])
     #cv2.imshow('5th img',Merge1.imglis t[5])
     #newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[1]) 
     # newImg = Merge1._StitchImage(newImg,Merge1.imglist[2]) 
@@ -537,6 +567,6 @@ if __name__ == "__main__":
     # Bimg1,Gimg1,Rimg1 = map(cv2.equalizeHist,(Bimg1,Gimg1,Rimg1))
     # newImg2 = cv2.merge((Bimg1,Gimg1,Rimg1))
     # chazhi = newImg2 -newImg
-    cv2.imshow("testAnothernewAlg.jpg",newImg)
+    cv2.imshow("testAnothernewAlg.jpg",newImg.astype(np.uint8))
     cv2.waitKey(0)
     print("finish")
