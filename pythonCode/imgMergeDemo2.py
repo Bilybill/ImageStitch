@@ -77,12 +77,6 @@ class Merge:
                     Q22 = (INTER_y,INTER_x)    
                     empty_img[i,j] = np.rint(img[Q11]*(INTER_x-Pro_x)*(INTER_y-Pro_y)+img[Q21]*(Pro_x-FLOOR_x)*(INTER_y-Pro_y) + img[Q12]*(INTER_x-Pro_x)*(Pro_y-FLOOR_y)+img[Q22]*(Pro_x-FLOOR_x)*(Pro_y-FLOOR_y))
         return Pro_point,(X_max,Y_max,X_min,Y_min),empty_img
-    
-    # def getKeyPoint(self):
-    #     return self._getKeyPoint(self.img1,self.img2)
-
-    # def GetGeometry(self)
-
 
     def Merge(self,RotateImage,NotRotateImage,point,Spe_point):
         rows_2,cols_2 = NotRotateImage.shape#NotRotateImage是未旋转的图像
@@ -266,16 +260,19 @@ class Merge:
             else:
                 temp_img[:,:] = Temp_img2
             Temp_img2 = temp_img
-        mask1 = 1 - (Temp_img1 == 0)
+        start = start + 12
+        mask1 = 1 - (Temp_img1 == 0)#有值的部分是1 无值的部分是0
         mask2 = 1 - (Temp_img2 == 0)
-        Diff = abs(Temp_img1.astype(np.int32)- Temp_img2.astype(np.int32))*mask1*mask2
+        Diff = (abs(Temp_img1.astype(np.int32)- Temp_img2.astype(np.int32))*mask1*mask2).astype(np.uint8)
         Diff = Diff[:,start:end]#截取到相交部分
+        # cv2.imshow("DIff",Diff)
+        # cv2.waitKey(0)
         Length = end - start
-        Intensity = [Diff[0,i] for i in range(Length)]
+        Intensity = [int(Diff[0,i]) for i in range(Length)]
         Route = []
         for i in range(Length):
             Route.append([])
-            Route[i].appned(i)
+            Route[i].append(i)
         for i in range(Diff.shape[0] - 1):
             for j in range(Diff.shape[1]):
                 m = 0
@@ -283,7 +280,7 @@ class Merge:
                     if Diff[i+1,j] < Diff[i+1,j+1]:
                         m = j+1
                     else:
-                         m = j
+                        m = j
                 elif j == Diff.shape[1] - 1:
                     if Diff[i+1,j] < Diff[i+1,j-1]:
                         m = j - 1
@@ -296,20 +293,23 @@ class Merge:
                         m = j
                     if Diff[i+1,m] < Diff[i+1,j-1]:
                         m = j - 1
-                Intensity[j] = Intensity[j] + Diff[i+1,m]
+                Intensity[j] = Intensity[j] + int(Diff[i+1,m])
                 Route[j].append(m)
+        #print(Intensity)
         minIndex = Intensity.index(min(Intensity))
-        minRoute = np.array(Route[j]) + start
+        minRoute = np.array(Route[minIndex]) + start
+        #print(minRoute)
         DiffGraph = np.zeros((shape_Rows,shape_Cols),dtype=np.uint8)
         for i in range(shape_Rows):
             DiffGraph[i,minRoute[i]:] = 1
         newImg = None
+        H = None
         if Spe_point[2] != minX and Spe_point[0] == maxX:#Temp_img1 在左边
-            newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + (mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2 
+            newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
         elif Spe_pointp[2] == minX and Spe_point[0] != maxX:#Temp_img2 在左边
-            newImg = Temp_img2 * (1 - DiffGraph) + DiffGraph * Temp_img1 + (mask1 | mask2) * DiffGraph * (1 - mask1) * Temp_img2 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask2) * Temp_img1
+            newImg = Temp_img2 * (1 - DiffGraph) + DiffGraph * Temp_img1 + ((mask1 | mask2) * DiffGraph * (1 - mask1) * Temp_img2 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask2) * Temp_img1).astype(np.uint8)
         elif Spe_point == minX and Spe_point[0] == maxX:#Temp_img2 水平包含Temp_img
-            newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + (mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2
+            newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
         return newImg   
 
     def _GetImgHist(self, img):
@@ -364,7 +364,7 @@ class Merge:
         return newImg
     def _MergeSingleChannle(self,img1,img2,Homo):
         Point,Spe_point,result = self.RotateImage(Homo,img2)
-        newImg = self.Merge(result,img1,Point,Spe_point)
+        newImg = self.MergeNewAlg(result,img1,Point,Spe_point)
         return newImg
     
 
@@ -375,15 +375,15 @@ if __name__ == "__main__":
         PATH_list.append("../img/"+str(i+1)+".JPG")
     Merge1 = Merge(PATH_list)
     #cv2.imshow('5th img',Merge1.imglist[5])
-    newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[1]) 
-    # newImg = Merge1._StitchImage(newImg,Merge1.imglist[7]) 
-    # newImg = Merge1._StitchImage(newImg,Merge1.imglist[1]) 
-    # newImg = Merge1._StitchImage(newImg,Merge1.imglist[2]) 
+    newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[6]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[7]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[1]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[2]) 
     #newImg = Merge1._StitchImage(newImg,Merge1.imglist[5])
     Bimg1,Gimg1,Rimg1 = cv2.split(newImg)
     Bimg1,Gimg1,Rimg1 = map(cv2.equalizeHist,(Bimg1,Gimg1,Rimg1))
     newImg2 = cv2.merge((Bimg1,Gimg1,Rimg1))
     # chazhi = newImg2 -newImg
-    cv2.imwrite("oldAlg.jpg",newImg2)
-    # cv2.waitKey(0)
+    cv2.imshow("newAlg.jpg",newImg)
+    cv2.waitKey(0)
     print("finish")
