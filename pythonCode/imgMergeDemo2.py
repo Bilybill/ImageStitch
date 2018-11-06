@@ -262,16 +262,24 @@ class Merge:
             else:
                 temp_img[:,:] = Temp_img2
             Temp_img2 = temp_img
+        meanA = np.mean(Temp_img1)
+        meanB = np.mean(Temp_img2)
+        # if meanA > meanB:
+        #     Temp_img2 = ((Temp_img2+meanA) / 2)
+        #     Temp_img2[Temp_img2>=255] = 255
+        #     Temp_img2 = np.rint(Temp_img2)
+        #     Temp_img2 = Temp_img2.astype(np.uint8)
+        # elif meanA < meanB:
+        #     Temp_img1 = ((Temp_img1+meanB) / 2)
+        #     Temp_img1[Temp_img1>=255] = 255
+        #     Temp_img1 = np.rint(Temp_img1)
+        #     Temp_img1 = Temp_img1.astype(np.uint8)
         if end - start > 50:
             start = start + 10
         mask1 = 1 - (Temp_img1 == 0)#有值的部分是1 无值的部分是0
         mask2 = 1 - (Temp_img2 == 0)
         Diff = (abs(Temp_img1.astype(np.int32)- Temp_img2.astype(np.int32))*mask1*mask2).astype(np.uint8)
         Diff = Diff[:,start:end]#截取到相交部分
-        if NUM == 1:
-            cv2.imshow("DIff",Diff)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
         Diff = ms.mySobel(Diff) + np.square(Diff)
         Length = end - start
         Intensity = [int(Diff[0,i]) for i in range(Length)]#强度值初始化
@@ -304,23 +312,27 @@ class Merge:
         
         minIndex = Intensity.index(min(Intensity))
         minRoute = np.array(Route[minIndex]) + start
-        DiffGraph = np.zeros((shape_Rows,shape_Cols),dtype=np.uint8)
-        for i in range(shape_Rows):
-            DiffGraph[i,minRoute[i]:] = 1
-        # temp = DiffGraph*255
-        # cv2.imshow("Diff",temp)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-        newImg = None
-        H = None   
-        if Spe_point[2] != minX and Spe_point[0] == maxX:#Temp_img1 在左边
-            newImg = Temp_img1 * (1 - DiffGraph)+ + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
-        elif Spe_point[2] == minX and Spe_point[0] != maxX:#Temp_img2 在左边
-            newImg = Temp_img2 * (1 - DiffGraph) + DiffGraph * Temp_img1 + ((mask1 | mask2) * DiffGraph * (1 - mask1) * Temp_img2 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask2) * Temp_img1).astype(np.uint8)
-        elif Spe_point == minX and Spe_point[0] == maxX:#Temp_img2 水平包含Temp_img
-            newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
-        elif Spe_point != minX and Spe_point[0] != maxX:
-            newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
+        if Spe_point[2] == minX:
+            newImg = self._ImageStitch(minRoute,Temp_img2,Temp_img1,start,end)
+        else:
+            newImg = self._ImageStitch(minRoute,Temp_img1,Temp_img2,start,end)
+        # DiffGraph = np.zeros((shape_Rows,shape_Cols),dtype=np.uint8)
+        # for i in range(shape_Rows):
+        #     DiffGraph[i,minRoute[i]:] = 1
+        # # temp = DiffGraph*255
+        # # cv2.imshow("Diff",temp)
+        # # cv2.waitKey(0)
+        # # cv2.destroyAllWindows()
+        # newImg = None
+        # H = None   
+        # if Spe_point[2] != minX and Spe_point[0] == maxX:#Temp_img1 在左边
+        #     newImg = Temp_img1 * (1 - DiffGraph)+ + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
+        # elif Spe_point[2] == minX and Spe_point[0] != maxX:#Temp_img2 在左边
+        #     newImg = Temp_img2 * (1 - DiffGraph) + DiffGraph * Temp_img1 + ((mask1 | mask2) * DiffGraph * (1 - mask1) * Temp_img2 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask2) * Temp_img1).astype(np.uint8)
+        # elif Spe_point == minX and Spe_point[0] == maxX:#Temp_img2 水平包含Temp_img
+        #     newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
+        # elif Spe_point != minX and Spe_point[0] != maxX:
+        #     newImg = Temp_img1 * (1 - DiffGraph) + DiffGraph * Temp_img2 + ((mask1 | mask2) * DiffGraph * (1 - mask2) * Temp_img1 + (mask1 | mask2) * (1 - DiffGraph) * (1 - mask1) * Temp_img2).astype(np.uint8)
         return newImg   
 
     def MergerNewAnother(self,RotateImage,NotRotateImage,point,Spe_point):
@@ -539,11 +551,6 @@ class Merge:
         return newImg
     def _MergeSingleChannle(self,img1,img2,Homo):
         Point,Spe_point,result = self.RotateImage(Homo,img2)
-        if NUM == 1:
-            cv2.imshow("1",img1)
-            cv2.imshow("4",result)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
         #newImg = self.Merge(result,img1,Point,Spe_point)
         newImg = self.MergeNewAlg(result,img1,Point,Spe_point)
         #newImg = self.MergerNewAnother(result,img1,Point,Spe_point)
@@ -606,7 +613,7 @@ class Merge:
                     end = Temp_img1.shape[1]
             elif Spe_point[2] == minX and Spe_point[0] != maxX:
                 temp_img[:,abs(minX):abs(minX) + Temp_img1.shape[1]] = Temp_img1
-                start = 0
+                start = abs(Spe_point[2])
                 end = Spe_point[0] + 1
             else:
                 start = abs(Spe_point[2])
@@ -625,51 +632,49 @@ class Merge:
             else:
                 temp_img[:,:] = Temp_img2
             Temp_img2 = temp_img
-        # if end - start > 50:
-        #     start = start + 100
+        if end - start > 50:
+            start = start + 10
         mask1 = 1 - (Temp_img1 == 0)#有值的部分是1 无值的部分是0
         mask2 = 1 - (Temp_img2 == 0)
         Diff = (abs(Temp_img1.astype(np.int32)- Temp_img2.astype(np.int32))*mask1*mask2).astype(np.uint8)
         Diff = Diff[:,start:end]#截取到相交部分
-        # cv2.imshow("DIff",Diff)
-        # cv2.waitKey(0)
+        # if NUM == 1:
+        #     cv2.imshow("DIff",Diff)
+        #     cv2.waitKey(0)
+        #     cv2.destroyAllWindows()
+        Diff = ms.mySobel(Diff) + np.square(Diff)
         Length = end - start
-        Intensity = [int(Diff[0,i]) for i in range(Length)]
+        Intensity = [int(Diff[0,i]) for i in range(Length)]#强度值初始化
         Route = []
         for i in range(Length):
             Route.append([])
             Route[i].append(i)
-        for i in range(Diff.shape[0] - 1):
+        for i in range(Diff.shape[0] - 1):#基于动态规划的最佳缝合线搜索算法
             for j in range(Diff.shape[1]):
                 m = 0
-                if j == 0:
-                    if Diff[i+1,j] > Diff[i+1,j+1]:
-                        m = j+1
+                if Route[j][-1] == 0:
+                    if Diff[i+1,Route[j][-1]] > Diff[i+1,Route[j][-1]+1]:#选择强度值小的那一方
+                        m = Route[j][-1]+1
                     else:
-                        m = j
-                elif j == Diff.shape[1] - 1:
-                    if Diff[i+1,j] > Diff[i+1,j-1]:
-                        m = j - 1
+                        m = Route[j][-1]
+                elif Route[j][-1] == Diff.shape[1] - 1:
+                    if Diff[i+1,Route[j][-1]] > Diff[i+1,Route[j][-1]-1]:
+                        m = Route[j][-1] - 1
                     else:
-                        m = j
+                        m = Route[j][-1]
                 else:
-                    if Diff[i+1,j] > Diff[i+1,j+1]:
-                        m = j + 1
+                    if Diff[i+1,Route[j][-1]] > Diff[i+1,Route[j][-1]+1]:
+                        m = Route[j][-1] + 1
                     else:
-                        m = j
-                    if Diff[i+1,m] > Diff[i+1,j-1]:
-                        m = j - 1
+                        m = Route[j][-1]
+                    if Diff[i+1,m] > Diff[i+1,Route[j][-1]-1]:
+                        m = Route[j][-1] - 1
                 Intensity[j] = Intensity[j] + int(Diff[i+1,m])
                 Route[j].append(m)
-        #print(Intensity)
         minIndex = Intensity.index(min(Intensity))
         minRoute = np.array(Route[minIndex]) + start
         #print(minRoute)
         num = 0
-        # for i in range(len(minRoute)):
-        #     if minRoute[i] == start:
-        #         num += 1
-        # print(num,len(minRoute))
         DiffGraph = np.zeros((shape_Rows,shape_Cols))
         temp_Diff = DiffGraph.copy()
         for i in range(shape_Rows):
@@ -696,6 +701,53 @@ class Merge:
         newImg = (Temp_img1 * (1 - temp_Diff) + temp_Diff * Temp_img2).astype(np.uint8)
         newImg = newImg.astype(np.uint8)
         return newImg
+    def _ImageStitch(self,minRoute,img1,img2,start,end):
+        #img1在左侧
+        if NUM == 1:
+            cv2.imshow("1",img1)
+            cv2.imshow("2",img2)
+        rows,cols =  img1.shape
+        new_Img = np.zeros((rows,cols))
+        for i in range(len(minRoute)):#Route的长度应该是img1、img2的行数
+            if sum(img1[i,:] != 0) == 0:
+                new_Img[i,:] = img2[i,:]
+            elif sum(img2[i,:] != 0) == 0:
+                new_Img[i,:] = img1[i,:]
+            else:
+                if minRoute[i] - start > 2:
+                    leng = int((minRoute[i] - start)*0.5)
+                    while leng > end - minRoute[i]: 
+                        leng = int(leng*0.9)
+                    t_start = minRoute[i] - leng
+                    t_end = minRoute[i] + leng + 1
+                    H = (img1[i,t_start:t_end] + img2[i,t_start:t_end])/2
+                    weights = np.linspace(0,2*leng,2*leng+1)/(2*leng)
+                    f_mean = (1 - weights) * img1[i,t_start:t_end] + weights * img2[i,t_start:t_end]
+                    new_Img[i,:t_start] = img1[i,:t_start]
+                    temp1 = img1[i,t_start:minRoute[i]]
+                    temp2 = img2[i,minRoute[i]:minRoute[i] + leng + 1]
+                    boolM = abs(temp1-f_mean[:(minRoute[i]-t_start)])<H[:minRoute[i]-t_start]
+                    temp1[boolM] = f_mean[:(minRoute[i]-t_start)][boolM]
+                    temp1[1-boolM] = (temp1[1-boolM]+f_mean[1-boolM])/2
+                    boolM = abs(temp2-f_mean[(minRoute[i]-t_start):])<H[minRoute[i]-t_start:]
+                    temp2[boolM] = f_mean[(minRoute[i]-t_start):][boolM]
+                    temp2[1-boolM] = (temp2[1-boolM]+f_mean[(minRoute[i]-t_start):][1-boolM])/2
+                    new_Img[i,t_start:minRoute[i]] = temp1
+                    new_Img[i,minRoute[i]:minRoute[i] + leng + 1] = temp2
+                    new_Img[i,t_end:] = img2[i,t_end:]
+                else:
+                    new_Img[i,:minRoute[i]] = img1[i,:minRoute[i]]
+                    new_Img[i,minRoute[i]:] = img2[i,minRoute[i]:]
+            if NUM == 1:
+                cv2.imshow("new",new_Img)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+        new_Img = new_Img.astype(np.uint8)
+        return new_Img
+
+
+
+
 
 NUM = 0          
             
@@ -709,9 +761,13 @@ if __name__ == "__main__":
     # cv2.imshow("1",Merge1.imglist[0])
     # cv2.imshow()
     newImg = Merge1._StitchImage(Merge1.imglist[0],Merge1.imglist[8]) 
-    newImg = Merge1._StitchImage(newImg,Merge1.imglist[7]) 
+    cv2.imshow("1",newImg)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     NUM = 1
-    newImg = Merge1._StitchImage(newImg,Merge1.imglist[3]) 
+    newImg = Merge1._StitchImage(newImg,Merge1.imglist[7]) 
+    # NUM = 1
+    # newImg = Merge1._StitchImage(newImg,Merge1.imglist[3]) 
     # newImg = Merge1._StitchImage(newImg,Merge1.imglist[2])
     # newImg = Merge1._StitchImage(newImg,Merge1.imglist[3])
     # newImg = Merge1._StitchImage(newImg,Merge1.imglist[4])

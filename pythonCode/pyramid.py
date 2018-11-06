@@ -4,7 +4,7 @@ import cv2
 def pyramid_img(img,levels = 5):
     temp = img.copy()
     pyramid_images = []
-    #temp = cv2.GaussianBlur(temp,(5,5),1.0)
+    temp = cv2.GaussianBlur(temp,(3,3),1.0)
     for i in range(levels):
         dst = cv2.pyrDown(temp)
         pyramid_images.append(dst)
